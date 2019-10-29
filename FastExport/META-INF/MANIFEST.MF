@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: FastExport-Node extension for KNIME Workbench
-Bundle-SymbolicName: org.guiwege.knime; singleton:=true
+Bundle-SymbolicName: org.guiwege.knime.FastExport;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: fastexport.jar,lib/terajdbc4.jar
 Bundle-Activator: org.guiwege.knime.FastExportNodePlugin
