@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: FastLoad-Node extension for KNIME Workbench
-Bundle-SymbolicName: org.guiwege.knime; singleton:=true
+Bundle-SymbolicName: org.guiwege.knime.FastLoad;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: fastload.jar,lib/terajdbc4.jar
 Bundle-Activator: org.guiwege.knime.FastLoadNodePlugin
