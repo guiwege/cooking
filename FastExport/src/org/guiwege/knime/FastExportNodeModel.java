@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
+
+
+import org.knime.base.util.flowvariable.FlowVariableProvider;
+import org.knime.base.util.flowvariable.FlowVariableResolver;
 import org.knime.core.data.DataCell;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
@@ -60,7 +64,7 @@ import org.knime.core.node.port.database.reader.DBReader;
  * @author Guilherme Wege Chagas
  */
 @SuppressWarnings("deprecation")
-public class FastExportNodeModel extends NodeModel {
+public class FastExportNodeModel extends NodeModel implements FlowVariableProvider {
     
 	private static DatabaseConnectionSettings connSettings = null;
 	private static DataTableSpec teradataTableSpec = null;
@@ -168,7 +172,9 @@ public class FastExportNodeModel extends NodeModel {
         try {
         	// Loads the Teradata JDBC Driver
 			Class.forName("com.teradata.jdbc.TeraDriver");
-			String sql = m_selectStatementSettings.getStringValue();
+			
+			String sql = FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
+			//String sql = m_selectStatementSettings.getStringValue();
 			String select = sql;
 
 			// Ensure that TYPE=FASTEXPORT is set
@@ -443,6 +449,8 @@ public class FastExportNodeModel extends NodeModel {
     // Returns a DataTableSpec with the data types
 	protected DataTableSpec getResultSpec(final PortObjectSpec[] inSpecs)
 	        throws InvalidSettingsException, SQLException {
+
+			FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
 	        String query = m_selectStatementSettings.getStringValue();
 	    
             DatabaseConnectionPortObjectSpec connSpec =
