@@ -1,4 +1,4 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastload;
 
 import java.io.File;
 import java.io.IOException;
@@ -234,7 +234,7 @@ public class FastLoadNodeModel extends NodeModel {
             			}
             			break;
             		default:
-            			LOGGER.error("Coluna " + tableColumnsNames.get(index) + ", na pos: "+ index + ", não inserida... Valor: " + cell.toString());
+            			LOGGER.error("Coluna " + tableColumnsNames.get(index) + ", na pos: "+ index + ", nï¿½o inserida... Valor: " + cell.toString());
     				}
     			} // end for
 

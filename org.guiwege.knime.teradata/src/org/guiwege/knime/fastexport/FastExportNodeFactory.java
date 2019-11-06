@@ -1,25 +1,22 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastexport;
 
 import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeFactory;
 import org.knime.core.node.NodeView;
 
 /**
- * This is an example implementation of the node factory of the
- * "FastLoad" node.
- *
  * @author Guilherme Wege Chagas
  */
-public class FastLoadNodeFactory 
-        extends NodeFactory<FastLoadNodeModel> {
+public class FastExportNodeFactory 
+        extends NodeFactory<FastExportNodeModel> {
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public FastLoadNodeModel createNodeModel() {
+    public FastExportNodeModel createNodeModel() {
 		// Create and return a new node model.
-        return new FastLoadNodeModel();
+        return new FastExportNodeModel();
     }
 
     /**
@@ -35,8 +32,8 @@ public class FastLoadNodeFactory
      * {@inheritDoc}
      */
     @Override
-    public NodeView<FastLoadNodeModel> createNodeView(final int viewIndex,
-            final FastLoadNodeModel nodeModel) {
+    public NodeView<FastExportNodeModel> createNodeView(final int viewIndex,
+            final FastExportNodeModel nodeModel) {
 		// We return null as this example node does not provide a view. Also see "getNrNodeViews()".
 		return null;
     }
@@ -56,7 +53,7 @@ public class FastLoadNodeFactory
     @Override
     public NodeDialogPane createNodeDialogPane() {
 		// This example node has a dialog, hence we create and return it here. Also see "hasDialog()".
-        return new FastLoadNodeDialog();
+        return new FastExportNodeDialog();
     }
 
 }

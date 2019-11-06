@@ -1,4 +1,4 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastload;
 
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentNumber;

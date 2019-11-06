@@ -1,25 +1,25 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastload;
 
 import org.knime.core.node.NodeView;
 
 
 /**
  * This is an example implementation of the node view of the
- * "FastExport" node.
+ * "FastLoad" node.
  * 
  * As this example node does not have a view, this is just an empty stub of the 
  * NodeView class which not providing a real view pane.
  *
  * @author Guilherme Wege Chagas
  */
-public class FastExportNodeView extends NodeView<FastExportNodeModel> {
+public class FastLoadNodeView extends NodeView<FastLoadNodeModel> {
 
     /**
      * Creates a new view.
      * 
-     * @param nodeModel The model (class: {@link FastExportNodeModel})
+     * @param nodeModel The model (class: {@link FastLoadNodeModel})
      */
-    protected FastExportNodeView(final FastExportNodeModel nodeModel) {
+    protected FastLoadNodeView(final FastLoadNodeModel nodeModel) {
         super(nodeModel);
 
         // TODO instantiate the components of the view here.
@@ -34,8 +34,8 @@ public class FastExportNodeView extends NodeView<FastExportNodeModel> {
 
         // TODO retrieve the new model from your nodemodel and 
         // update the view.
-        FastExportNodeModel nodeModel = 
-            (FastExportNodeModel)getNodeModel();
+        FastLoadNodeModel nodeModel = 
+            (FastLoadNodeModel)getNodeModel();
         assert nodeModel != null;
         
         // be aware of a possibly not executed nodeModel! The data you retrieve
