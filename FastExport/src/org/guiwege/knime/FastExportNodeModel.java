@@ -79,16 +79,20 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	private static final String KEY_BULK_SIZE = "bulk_size";
 	private static final String KEY_SELECT_STATEMENT = "select_statement";
 	private static final String KEY_ALL_COLUMNS_ARE_STRINGS = "all_columns_are_strings";
+	//private static final String KEY_EXPORT_TO_CSV = "export_to_csv";
+	//private static final String KEY_PATH_TO_CSV_FILE = "path_to_csv_file";
 	
 	private static final int DEFAULT_BULK_SIZE = 0;
-	private static final String DEFAULT_SELECT_STATEMENT = "SELECT *\nFROM <TABLE>\n;";
+	private static final String DEFAULT_SELECT_STATEMENT = "SELECT *\nFROM $${STABLE_NAME_VAR}$$\n;";
 	private static final boolean DEFAULT_ALL_COLUMNS_ARE_STRINGS = false;
-	
+	//private static final boolean DEFAULT_EXPORT_TO_CSV = false;
+	//private static final String DEFAULT_PATH_TO_CSV_FILE = "";
 	
 	private final SettingsModelInteger m_bulkSizeSettings = createBulkSizeSettingsModel();
 	private final SettingsModelString m_selectStatementSettings = createSelectStatementSettingsModel();
 	private final SettingsModelBoolean m_allColumnsAreStrings = createAllColumnsAreStringsSettingsModel();
-
+	//private final SettingsModelBoolean m_exportToCSVSettings = createExportToCSVSettingsModel();
+	//private final SettingsModelString m_pathToCSVFileSettings = createPathToCSVFileSettingsModel();
 	
 	protected FastExportNodeModel() {
 		super(new PortType[] {DatabaseConnectionPortObject.TYPE}, new PortType[] {BufferedDataTable.TYPE});
@@ -106,6 +110,17 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 		return new SettingsModelBoolean(KEY_ALL_COLUMNS_ARE_STRINGS, DEFAULT_ALL_COLUMNS_ARE_STRINGS);
 	}
 
+	/*
+	static SettingsModelBoolean createExportToCSVSettingsModel() {
+		return new SettingsModelBoolean(KEY_EXPORT_TO_CSV, DEFAULT_EXPORT_TO_CSV);
+	}
+	
+	static SettingsModelString createPathToCSVFileSettingsModel() {
+		return new SettingsModelString(KEY_PATH_TO_CSV_FILE, DEFAULT_PATH_TO_CSV_FILE);
+	}
+	*/
+    
+	
 	
 	/**
 	 * 
@@ -169,6 +184,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
     	// Create a container for the datatypes identified in the configure method
 		BufferedDataContainer container = exec.createDataContainer(teradataTableSpec);
 		
+		
         try {
         	// Loads the Teradata JDBC Driver
 			Class.forName("com.teradata.jdbc.TeraDriver");
@@ -201,6 +217,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
             SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
             
 			int rowsSelected = 0;
+			
 			for (int i = 1; rs.next(); i++, rowsSelected++) {
 				
 				List<DataCell> cells = new ArrayList<>();
@@ -289,7 +306,10 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
                 }
                 // Inserts a row to the KNIME table
                 DataRow row = new DefaultRow(RowKey.createRowKey(rowsSelected), cells);
+                
                 container.addRowToTable(row);
+                
+                exec.setMessage("Row: " + String.valueOf(i));
                 
                 if (i % 1000000 == 0 ) {
                 	// Show progress for each 1,000,000 rows
@@ -310,6 +330,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
     }
 
 
+    
 	/**
 	 * {@inheritDoc}
 	 */
@@ -325,6 +346,8 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 		m_selectStatementSettings.saveSettingsTo(settings);
 		m_allColumnsAreStrings.saveSettingsTo(settings);
 		m_bulkSizeSettings.saveSettingsTo(settings);
+		//m_exportToCSVSettings.saveSettingsTo(settings);
+		//m_pathToCSVFileSettings.saveSettingsTo(settings);
 	}
 
 	/**
@@ -342,6 +365,8 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 		m_selectStatementSettings.loadSettingsFrom(settings);
 		m_allColumnsAreStrings.loadSettingsFrom(settings);
 		m_bulkSizeSettings.loadSettingsFrom(settings);
+		//m_exportToCSVSettings.loadSettingsFrom(settings);
+		//m_pathToCSVFileSettings.loadSettingsFrom(settings);
 	}
 
 	/**
@@ -358,6 +383,8 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 		m_selectStatementSettings.validateSettings(settings);
 		m_allColumnsAreStrings.validateSettings(settings);
 		m_bulkSizeSettings.validateSettings(settings);
+		//m_exportToCSVSettings.validateSettings(settings);
+		//m_pathToCSVFileSettings.validateSettings(settings);
 	}
 
 	@Override
@@ -451,7 +478,8 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	        throws InvalidSettingsException, SQLException {
 
 			FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
-	        String query = m_selectStatementSettings.getStringValue();
+	        //String query = m_selectStatementSettings.getStringValue();
+			String query = FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
 	    
             DatabaseConnectionPortObjectSpec connSpec =
                 (DatabaseConnectionPortObjectSpec)inSpecs[getNrInPorts() - 1];
