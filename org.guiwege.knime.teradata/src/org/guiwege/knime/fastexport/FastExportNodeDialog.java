@@ -1,4 +1,4 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastexport;
 
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;

@@ -2,7 +2,7 @@
  * $Revision$ $Date$ $Author$
  *
  */
-package org.guiwege.knime;
+package org.guiwege.knime.fastexport;
 
 import org.eclipse.core.runtime.Plugin;
 import org.osgi.framework.BundleContext;
@@ -16,14 +16,14 @@ import org.osgi.framework.BundleContext;
  *
  * @author Guilherme Wege Chagas
  */
-public class FastLoadNodePlugin extends Plugin {
+public class FastExportNodePlugin extends Plugin {
     // The shared instance.
-    private static FastLoadNodePlugin plugin;
+    private static FastExportNodePlugin plugin;
 
     /**
      * The constructor.
      */
-    public FastLoadNodePlugin() {
+    public FastExportNodePlugin() {
         super();
         plugin = this;
     }
@@ -57,7 +57,7 @@ public class FastLoadNodePlugin extends Plugin {
      * 
      * @return Singleton instance of the Plugin
      */
-    public static FastLoadNodePlugin getDefault() {
+    public static FastExportNodePlugin getDefault() {
         return plugin;
     }
 

@@ -1,4 +1,4 @@
-package org.guiwege.knime;
+package org.guiwege.knime.fastexport;
 
 import java.io.File;
 import java.io.IOException;

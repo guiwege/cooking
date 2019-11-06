@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: FastExport / FastLoad Node extension for KNIME Workbench
+Bundle-SymbolicName: org.guiwege.knime.teradata;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-ClassPath: fastexport.jar,lib/terajdbc4.jar
+Bundle-Activator: org.guiwege.knime.fastexport.FastExportNodePlugin
+Bundle-Vendor: Guilherme Wege Chagas
+Require-Bundle: org.eclipse.core.runtime,
+ org.knime.workbench.core;bundle-version="[4.0.0,5.0.0)",
+ org.knime.workbench.repository;bundle-version="[4.0.0,5.0.0)",
+ org.knime.base;bundle-version="[4.0.0,5.0.0)"
+Bundle-ActivationPolicy: lazy
+Export-Package: org.guiwege.knime.fastexport,
+ org.guiwege.knime.fastload
+
