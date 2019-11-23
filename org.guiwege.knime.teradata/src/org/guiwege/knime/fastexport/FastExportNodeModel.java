@@ -7,6 +7,7 @@ import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,6 +19,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -25,6 +27,8 @@ import java.util.ListIterator;
 import org.knime.base.util.flowvariable.FlowVariableProvider;
 import org.knime.base.util.flowvariable.FlowVariableResolver;
 import org.knime.core.data.DataCell;
+import org.knime.core.data.DataColumnSpec;
+import org.knime.core.data.DataColumnSpecCreator;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DataType;
@@ -95,7 +99,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	//private final SettingsModelString m_pathToCSVFileSettings = createPathToCSVFileSettingsModel();
 	
 	protected FastExportNodeModel() {
-		super(new PortType[] {DatabaseConnectionPortObject.TYPE}, new PortType[] {BufferedDataTable.TYPE});
+		super(new PortType[] {DatabaseConnectionPortObject.TYPE}, new PortType[] {BufferedDataTable.TYPE, BufferedDataTable.TYPE});
 	}
 
 	static SettingsModelInteger createBulkSizeSettingsModel() {
@@ -131,6 +135,13 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 		DatabaseConnectionPortObjectSpec incomingConnection = (DatabaseConnectionPortObjectSpec)inSpecs[0];
         connSettings = incomingConnection.getConnectionSettings(getCredentialsProvider());
 		
+        /* Create a spec for the second table, this piece of code is exactly
+         * the same as in the execute method
+         */
+		DataColumnSpec[] dimensionsColSpecs = new DataColumnSpec[1];
+		dimensionsColSpecs[0] = new DataColumnSpecCreator("Row Count", LongCell.TYPE).createSpec();
+		DataTableSpec dimensionsDataTableSpec = new DataTableSpec(dimensionsColSpecs);
+        
 		try {
 			DataTableSpec resultSpec = getResultSpec(inSpecs);
 			
@@ -153,7 +164,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 				sbColunas.append(separador + item);
 			}
 			
-	        LOGGER.info("Colunas: " + sbColunas);
+	        //LOGGER.info("Colunas: " + sbColunas);
 	        
 	        if (m_allColumnsAreStrings.getBooleanValue()) {
 	        	LOGGER.info("Config \"set All Columns Are Strings\" to true");
@@ -165,15 +176,15 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	        	
 	        	DataTableSpec allColumnsAreStringsTableSpec = new DataTableSpec(resultSpec.getColumnNames(), stringTypesArray);
 	        	teradataTableSpec = allColumnsAreStringsTableSpec;
-	        	return new DataTableSpec[] {allColumnsAreStringsTableSpec};
+	        	return new DataTableSpec[] {allColumnsAreStringsTableSpec, dimensionsDataTableSpec};
 	        }
 	        else {
-				return new DataTableSpec[]{resultSpec};	
+				return new DataTableSpec[]{resultSpec, dimensionsDataTableSpec};	
 	        }
 		} catch (SQLException e1) {
 			e1.printStackTrace();
 		}
-        return new DataTableSpec[] {null};
+        return new DataTableSpec[] {null, null};
 	}
 	
 	
@@ -182,11 +193,11 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
         
     	// Create a container for the datatypes identified in the configure method
 		BufferedDataContainer container = exec.createDataContainer(teradataTableSpec);
-		
+		int rowsSelected = 0;
 		
         try {
         	// Loads the Teradata JDBC Driver
-			Class.forName("com.teradata.jdbc.TeraDriver");
+			//Class.forName("com.teradata.jdbc.TeraDriver");
 			
 			String sql = FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
 			//String sql = m_selectStatementSettings.getStringValue();
@@ -200,7 +211,15 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 
 			LOGGER.info("Beginning FastExport");
 			
+		    Enumeration<Driver> e = java.sql.DriverManager.getDrivers();
+		    while (e.hasMoreElements()) {
+		      Object driverAsObject = e.nextElement();
+		      LOGGER.info("JDBC Driver=" + driverAsObject);
+		    }
+		    
 			PreparedStatement pstmt = con.prepareStatement(select);
+
+			LOGGER.info("Query:\n" + select);
 			
 			// Show warnings
 			printSQLWarnings(con);
@@ -215,7 +234,6 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
             SimpleDateFormat timeFormat = new SimpleDateFormat("hh:mm:ss");
             SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
             
-			int rowsSelected = 0;
 			
 			for (int i = 1; rs.next(); i++, rowsSelected++) {
 				
@@ -325,7 +343,23 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 
 		container.close();
 		BufferedDataTable out = container.getTable();
-		return new BufferedDataTable[] { out };
+		
+		
+		/* Create the dimensions Table with the Row Count */
+		DataColumnSpec[] dimensionsColSpecs = new DataColumnSpec[1];
+		dimensionsColSpecs[0] = new DataColumnSpecCreator("Row Count", LongCell.TYPE).createSpec();
+		
+		DataTableSpec dimensionsDataTableSpec = new DataTableSpec(dimensionsColSpecs);
+		BufferedDataContainer dimensionsContainer = exec.createDataContainer(dimensionsDataTableSpec);
+		
+		List<DataCell> cells = new ArrayList<>();
+		cells.add(new LongCell(rowsSelected));
+		DataRow row = new DefaultRow(RowKey.createRowKey(0), cells); // The row ID
+		dimensionsContainer.addRowToTable(row);
+		dimensionsContainer.close();
+		BufferedDataTable out2 = dimensionsContainer.getTable();
+		
+		return new BufferedDataTable[] { out, out2 };
     }
 
 

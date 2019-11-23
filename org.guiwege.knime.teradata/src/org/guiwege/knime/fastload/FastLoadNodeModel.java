@@ -101,7 +101,7 @@ public class FastLoadNodeModel extends NodeModel {
 
 		try {
         	// Loads the Teradata Driver
-	    	Class.forName("com.teradata.jdbc.TeraDriver");
+	    	//Class.forName("com.teradata.jdbc.TeraDriver");
 	    	
 			String jdbc = removeJDBCAttribute(connSettings.getJDBCUrl(), "TYPE=FASTLOAD");
 			Connection con = DriverManager.getConnection(jdbc + ",TYPE=FASTLOAD", connSettings.getUserName(), connSettings.getPassword());
@@ -326,8 +326,6 @@ public class FastLoadNodeModel extends NodeModel {
 			LOGGER.error(sw);
 			
 		} catch (CanceledExecutionException e) {
-			printStackTraceToLog(e);
-		} catch (ClassNotFoundException e) {
 			printStackTraceToLog(e);
 		} 
 
