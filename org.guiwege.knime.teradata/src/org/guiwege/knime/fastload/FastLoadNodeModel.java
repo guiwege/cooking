@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
@@ -16,7 +17,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import org.knime.core.data.MissingCell;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 import org.knime.core.data.DataCell;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
@@ -46,7 +49,6 @@ import org.knime.core.node.port.database.DatabaseConnectionSettings;
 import org.knime.core.node.port.database.DatabaseQueryConnectionSettings;
 import org.knime.core.node.port.database.reader.DBReader;
 
-
 /**
  * @author Guilherme Wege Chagas
  */
@@ -58,6 +60,7 @@ public class FastLoadNodeModel extends NodeModel {
     // Variables for the data types
     private static List<String> tableColumnsDataTypes = null;
     private static List<String> tableColumnsNames = null;
+    private static List<Integer> tableColumnDataTypesInt = null;
 	
     // Debug variables
     // The current row being processed
@@ -98,13 +101,23 @@ public class FastLoadNodeModel extends NodeModel {
 
 		BufferedDataTable inputTable = (BufferedDataTable) inData[1];
 		CloseableRowIterator rowIterator = inputTable.iterator();
-
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		
+		boolean isFastLoad = false; 
+		
 		try {
         	// Loads the Teradata Driver
 	    	//Class.forName("com.teradata.jdbc.TeraDriver");
 	    	
-			String jdbc = removeJDBCAttribute(connSettings.getJDBCUrl(), "TYPE=FASTLOAD");
-			Connection con = DriverManager.getConnection(jdbc + ",TYPE=FASTLOAD", connSettings.getUserName(), connSettings.getPassword());
+			String jdbc = connSettings.getJDBCUrl();
+			//String jdbc = removeJDBCAttribute(connSettings.getJDBCUrl(), "TYPE=FASTLOAD");
+			//jdbc = jdbc + ",TYPE=FASTLOAD";
+			LOGGER.info("String JDBC: " + jdbc);
+			
+			con = DriverManager.getConnection(jdbc, connSettings.getUserName(), connSettings.getPassword());
+			
+			isFastLoad = jdbc.toUpperCase().contains("TYPE=FASTLOAD");
 			
 			String tableName = m_tableNameSettings.getStringValue();
             
@@ -115,11 +128,13 @@ public class FastLoadNodeModel extends NodeModel {
             
             String insertStatement = "INSERT INTO " + tableName + " VALUES(" + questionMarks + ")";
             
-            PreparedStatement pstmt = con.prepareStatement(insertStatement);
+            pstmt = con.prepareStatement(insertStatement);
+            //pstmt.setTimestamp(1, getCurrentTimeStamp());
             
             // Show warnings, if any
             printSQLWarnings(con);
             
+            int rowCount = 0;
             int batchCount = 0;
             con.setAutoCommit(false);
             
@@ -136,12 +151,15 @@ public class FastLoadNodeModel extends NodeModel {
     				
     				DataCell cell = currentRow.getCell(index);
     				String type = tableColumnsDataTypes.get(index);
+    				//int typeInt = tableColumnDataTypesInt.get(index);
+    				//LOGGER.info("CURRENT TYPE: " + typeInt + ", " + type);
     				
     				boolean isCurrentCellNull = cell.getClass() == MissingCell.class;
 
     				// Set the debug cell value
     				currentCellValueForDebug = cell.toString();
-    				
+    				//LOGGER.info("Preparing to add at: " + String.valueOf(sqlIndex) + " \"" + cell.toString() + "\"");
+    				//LOGGER.info("Bytes lengths: " + getBytes(cell.toString()));
 					switch(type) {
             		case "SMALLINT":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.SMALLINT);
@@ -195,6 +213,8 @@ public class FastLoadNodeModel extends NodeModel {
                 			StringCell stringCell = (StringCell) cell;
             				pstmt.setString(sqlIndex, stringCell.getStringValue());
             			}
+            			
+            			//pstmt.setString(sqlIndex, "");
             			break;
             		case "CHAR":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.CHAR);
@@ -202,6 +222,8 @@ public class FastLoadNodeModel extends NodeModel {
                 			StringCell charCell = (StringCell) cell;
             				pstmt.setString(sqlIndex, charCell.getStringValue());
             			}
+            			
+            			//pstmt.setString(sqlIndex, "");
             			break;
             		case "DATE":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.DATE);
@@ -219,8 +241,24 @@ public class FastLoadNodeModel extends NodeModel {
             				pstmt.setTime(sqlIndex, time);
             			}
             			break;
+            		case "TIME WITH TIME ZONE":
+            			if (isCurrentCellNull) {
+            				if (isFastLoad) pstmt.setTime(sqlIndex, Time.valueOf ("00:00:00"), Calendar.getInstance(TimeZone.getDefault())); 
+            				else pstmt.setNull(sqlIndex, java.sql.Types.TIME);
+            			}
+            			else {
+                			DateAndTimeCell timeCell = (DateAndTimeCell) cell;
+                			Time time = new Time(timeCell.getHourOfDay(), timeCell.getMinute(), timeCell.getSecond());
+            				pstmt.setTime(sqlIndex, time);
+            			}
+            			break;
             		case "TIMESTAMP":
-            			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.TIMESTAMP);
+            			//LOGGER.info("TIMESTAMP");
+            			if (isCurrentCellNull) {
+            				if (isFastLoad) pstmt.setTimestamp(sqlIndex, Timestamp.valueOf("1900-01-01 00:00:00.0"));
+            				else pstmt.setNull(sqlIndex, java.sql.Types.TIMESTAMP);
+            				//pstmt.setNull(sqlIndex, java.sql.Types.NULL);
+            			}
             			else {
                 			DateAndTimeCell timestampCell = (DateAndTimeCell) cell;
                 			Timestamp timestamp = new Timestamp(timestampCell.getYear() - 1900, 
@@ -233,17 +271,44 @@ public class FastLoadNodeModel extends NodeModel {
             				pstmt.setTimestamp(sqlIndex, timestamp);
             			}
             			break;
+            		case "TIMESTAMP WITH TIME ZONE":
+            			//LOGGER.info("TIMESTAMP WITH TIME ZONE");
+            			if (isCurrentCellNull) {
+            				if (isFastLoad) pstmt.setTimestamp(sqlIndex, Timestamp.valueOf("1900-01-01 00:00:00.0"), Calendar.getInstance(TimeZone.getDefault()));
+            				else pstmt.setNull(sqlIndex, java.sql.Types.TIMESTAMP);
+            				//pstmt.setNull(sqlIndex, java.sql.Types.NULL);
+            			}
+            			else {
+                			DateAndTimeCell timestampCell = (DateAndTimeCell) cell;
+                			Timestamp timestamp = new Timestamp(timestampCell.getYear() - 1900, 
+                					timestampCell.getMonth(),
+                					timestampCell.getDayOfMonth(),
+                					timestampCell.getHourOfDay(),
+                					timestampCell.getMinute(),
+                					timestampCell.getSecond(),
+                					0);
+                			LOGGER.info("Timestamp column: " + timestamp.toString());
+                			pstmt.setTimestamp(sqlIndex, timestamp);
+            				//pstmt.setTimestamp(sqlIndex, timestamp, Calendar.getInstance(TimeZone.getTimeZone("GMT-03:00")));
+                			//pstmt.setTimestamp(sqlIndex, timestamp, Calendar.getInstance(TimeZone.getDefault()));
+            			}
+            			//Object obj = new TimeZoneStruct ("TIMESTAMP WITH TIME ZONE", new Object [] { Timestamp.valueOf ("2004-04-07 10:34:03.974"), TimeZone.getTimeZone ("GMT-03:00")});
+            			//Object obj = new Object [] { Timestamp.valueOf ("2004-04-07 10:34:03.974"), TimeZone.getTimeZone ("GMT-03:00")};
+            			//pstmt.setObject(sqlIndex,  obj, java.sql.Types.TIMESTAMP);
+            			break;
             		default:
-            			LOGGER.error("Coluna " + tableColumnsNames.get(index) + ", na pos: "+ index + ", n�o inserida... Valor: " + cell.toString());
+            			LOGGER.error("Column " + tableColumnsNames.get(index) + ", at: "+ index + ", with value: " + cell.toString() + " was not inserted.");
     				}
     			} // end for
-
+    			
+    			//LOGGER.info(pstmt);
     			// Adds a row to the prepared statement
     			pstmt.addBatch();
     			
+    			rowCount++;
 				batchCount++;
 				
-				currentRowNumberForDebug = batchCount;
+				currentRowNumberForDebug = rowCount;
 				
 				// When there are as many batches as the bulkSizeSettings, 
 				// Execute them into the database
@@ -252,7 +317,6 @@ public class FastLoadNodeModel extends NodeModel {
 				if (batchCount % bulkSize == 0) {
 					
 					int updateCounts[] = pstmt.executeBatch();
-					
                     if (updateCounts == null) {
                         LOGGER.warn(
                             "ERROR: A null update count was returned!");
@@ -272,26 +336,27 @@ public class FastLoadNodeModel extends NodeModel {
                             }
                         }
                     }
-                    LOGGER.info(batchCount + " rows processed...");	
-
+                    LOGGER.info(rowCount + " rows processed...");
+                    
+					batchCount = 0;
                     // Check SQLWarning after executeBatch().
                     printSQLWarnings(con);
 				}
 	    		exec.checkCanceled();
-	    		exec.setProgress(batchCount / (double) inputTable.size(), "Last row processed: " + batchCount);
+	    		exec.setProgress(rowCount / (double) inputTable.size(), "Last row processed: " + rowCount);
 	    		
 	    	} // end while
     		
     		// Finished iterating through the rows
     		
     		// Executes the batch again with the remaining rows
-			int bulkSize = m_bulkSizeSettings.getIntValue();
+			//int bulkSize = m_bulkSizeSettings.getIntValue();
     		int updateCounts[] = pstmt.executeBatch();
             if (updateCounts == null) {
                 LOGGER.warn(
                     "ERROR: A null update count was returned!");
             } else {
-                if (updateCounts.length != bulkSize) {
+                if (updateCounts.length != batchCount) {
                 	LOGGER.warn(
                         "WARNING: The update count does not match the"
                         + " number of rows batched: expected "
@@ -306,15 +371,11 @@ public class FastLoadNodeModel extends NodeModel {
                     }
                 }
             }
-            LOGGER.info(batchCount + " total rows processed...");	
+            LOGGER.info(rowCount + " total rows processed...");	
 
             LOGGER.info("Commit.");
     		con.commit();
     		printSQLWarnings(con);
-    		LOGGER.info("Closing PreparedStatement.");
-    		pstmt.close();
-    		LOGGER.info("Closing Connection.");
-    		con.close();
     		
 		} catch (SQLException e) {
 			
@@ -329,6 +390,22 @@ public class FastLoadNodeModel extends NodeModel {
 			printStackTraceToLog(e);
 		} 
 
+		try {
+			LOGGER.info("Closing PreparedStatement.");
+			pstmt.close();
+    		printSQLWarnings(con);
+		} catch (SQLException e) {
+			printStackTraceToLog(e);
+		}
+		
+		try {
+    		LOGGER.info("Closing Connection.");
+			con.close();
+    		//printSQLWarnings(con);
+		} catch (SQLException e) {
+			//printStackTraceToLog(e);
+			e.printStackTrace();
+		}
 		// Return an empty BufferedTable
 		return new BufferedDataTable[] {};
 	}
@@ -356,6 +433,7 @@ public class FastLoadNodeModel extends NodeModel {
 		// Reset variables
 	    tableColumnsDataTypes = new ArrayList<>();
 	    tableColumnsNames = new ArrayList<>();
+	    tableColumnDataTypesInt = new ArrayList<>();
 		
 	    // Checks if table exists in Teradata and if it does, get its specs
 		DatabaseConnectionPortObjectSpec incomingConnection = (DatabaseConnectionPortObjectSpec)inSpecs[0];
@@ -371,15 +449,17 @@ public class FastLoadNodeModel extends NodeModel {
 			
 			String tableName = m_tableNameSettings.getStringValue();
 			
-			String select = "SELECT * FROM " + tableName + ";";
+			String select = "SELECT * FROM " + tableName + " where 1=0";
 			
 			PreparedStatement pstmt = con.prepareStatement(select);
 			ResultSet rs = pstmt.executeQuery();
 			ResultSetMetaData rsmd = rs.getMetaData();
 			
 	        for (int j = 1; j <= rsmd.getColumnCount(); j++) {
+	        	//
 	        	tableColumnsDataTypes.add(rsmd.getColumnTypeName(j).toUpperCase());
 	        	tableColumnsNames.add(rsmd.getColumnName(j).toUpperCase());
+	        	tableColumnDataTypesInt.add(rsmd.getColumnType(j));
 	        	LOGGER.info("Column " + j + ": " + rsmd.getColumnName(j) + "(" + rsmd.getColumnType(j) + ", " + rsmd.getColumnTypeName(j) + ")");
 	        }
 	        
@@ -392,7 +472,6 @@ public class FastLoadNodeModel extends NodeModel {
         
         return new PortObjectSpec[] { };
 	}
-
 
 	/**
 	 * {@inheritDoc}
@@ -473,9 +552,7 @@ public class FastLoadNodeModel extends NodeModel {
 		 */
 	}
 	
-	
 	// Custom methods
-	
 	private static String removeJDBCAttribute(String jdbc, String atrib) {
 		
 		// Removes the specified attribute from the string
@@ -515,7 +592,6 @@ public class FastLoadNodeModel extends NodeModel {
 			throw new InvalidSettingsException(
 					"Node error: " + e.getMessage(), e);
 		}
-		
 	}
 	
 	private void printSQLWarnings(Connection con) throws SQLException {
@@ -531,6 +607,36 @@ public class FastLoadNodeModel extends NodeModel {
         }
 		
 		con.clearWarnings();
+	}
+
+	private String getBytes(String strIn) {		
+		StringBuilder b = new StringBuilder();
+		
+		try {
+			final byte[] utf8Bytes = strIn.getBytes("UTF-8");
+			System.out.println(utf8Bytes.length); // prints "11"
+			b.append("utf8Bytes.length: " + utf8Bytes.length );
+			
+			final byte[] utf16Bytes= strIn.getBytes("UTF-16");
+			System.out.println(utf16Bytes.length); // prints "24"
+			b.append(", utf16Bytes.length: " + utf16Bytes.length);
+			
+			final byte[] utf32Bytes = strIn.getBytes("UTF-32");
+			System.out.println(utf32Bytes.length); // prints "44"
+			b.append(", utf32Bytes.length: " + utf32Bytes.length);
+			
+			final byte[] isoBytes = strIn.getBytes("ISO-8859-1");
+			System.out.println(isoBytes.length); // prints "11"
+			b.append(", isoBytes.length: " + isoBytes.length);
+
+			final byte[] winBytes = strIn.getBytes("CP1252");
+			System.out.println(winBytes.length); // prints "11"
+			b.append(", winBytes.length: " + winBytes.length);
+			
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return b.toString();
 	}
 }
 

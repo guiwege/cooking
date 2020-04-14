@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.Driver;
@@ -22,8 +24,6 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.ListIterator;
-
-
 import org.knime.base.util.flowvariable.FlowVariableProvider;
 import org.knime.base.util.flowvariable.FlowVariableResolver;
 import org.knime.core.data.DataCell;
@@ -61,7 +61,7 @@ import org.knime.core.node.port.database.DatabaseConnectionPortObjectSpec;
 import org.knime.core.node.port.database.DatabaseConnectionSettings;
 import org.knime.core.node.port.database.DatabaseQueryConnectionSettings;
 import org.knime.core.node.port.database.reader.DBReader;
-
+import org.osgi.framework.wiring.BundleWiring;
 
 /**
  *
@@ -198,7 +198,21 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
         try {
         	// Loads the Teradata JDBC Driver
 			//Class.forName("com.teradata.jdbc.TeraDriver");
-			
+        	
+        	/*
+        	File file = new File("C:\\Users\\TC016123\\Documents\\Drivers\\terajdbc4.jar"); 
+        	URL url = file.toURI().toURL();  
+        	URL[] urls = {url};
+        	
+        	//URLClassLoader child = new URLClassLoader (urls , this.getClass().getClassLoader().getClass().getClassLoader());
+        	URLClassLoader child = new URLClassLoader (urls , FastExportNodeModel.class.getClassLoader());
+        	//ClassLoader loader = bundle.adapt(BundleWiring.class).getClassLoader();
+        	
+        	LOGGER.info("this class name: " + this.getClass().getName());
+        	Class.forName("com.teradata.jdbc.TeraDriver", true, child);
+        	*/
+        	
+
 			String sql = FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
 			//String sql = m_selectStatementSettings.getStringValue();
 			String select = sql;
@@ -226,7 +240,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 			
 			// Reads the ResultSet
 			ResultSet rs = pstmt.executeQuery();
-			rs.setFetchSize(m_bulkSizeSettings.getIntValue());
+			//rs.setFetchSize(m_bulkSizeSettings.getIntValue());
             ResultSetMetaData rsmd = rs.getMetaData();
 
             // Let's create some datetime formats
@@ -363,7 +377,6 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
     }
 
 
-    
 	/**
 	 * {@inheritDoc}
 	 */
