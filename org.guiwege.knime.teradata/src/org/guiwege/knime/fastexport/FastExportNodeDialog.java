@@ -9,7 +9,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 
-/** 
+/**
  * @author Guilherme Wege Chagas
  */
 public class FastExportNodeDialog extends DefaultNodeSettingsPane {
