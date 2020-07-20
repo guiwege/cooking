@@ -83,20 +83,14 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	private static final String KEY_BULK_SIZE = "bulk_size";
 	private static final String KEY_SELECT_STATEMENT = "select_statement";
 	private static final String KEY_ALL_COLUMNS_ARE_STRINGS = "all_columns_are_strings";
-	//private static final String KEY_EXPORT_TO_CSV = "export_to_csv";
-	//private static final String KEY_PATH_TO_CSV_FILE = "path_to_csv_file";
 	
 	private static final int DEFAULT_BULK_SIZE = 0;
 	private static final String DEFAULT_SELECT_STATEMENT = "SELECT *\nFROM $${STABLE_NAME_VAR}$$\n;";
 	private static final boolean DEFAULT_ALL_COLUMNS_ARE_STRINGS = false;
-	//private static final boolean DEFAULT_EXPORT_TO_CSV = false;
-	//private static final String DEFAULT_PATH_TO_CSV_FILE = "";
 	
 	private final SettingsModelInteger m_bulkSizeSettings = createBulkSizeSettingsModel();
 	private final SettingsModelString m_selectStatementSettings = createSelectStatementSettingsModel();
 	private final SettingsModelBoolean m_allColumnsAreStrings = createAllColumnsAreStringsSettingsModel();
-	//private final SettingsModelBoolean m_exportToCSVSettings = createExportToCSVSettingsModel();
-	//private final SettingsModelString m_pathToCSVFileSettings = createPathToCSVFileSettingsModel();
 	
 	protected FastExportNodeModel() {
 		super(new PortType[] {DatabaseConnectionPortObject.TYPE}, new PortType[] {BufferedDataTable.TYPE, BufferedDataTable.TYPE});
@@ -113,16 +107,6 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	static SettingsModelBoolean createAllColumnsAreStringsSettingsModel() {
 		return new SettingsModelBoolean(KEY_ALL_COLUMNS_ARE_STRINGS, DEFAULT_ALL_COLUMNS_ARE_STRINGS);
 	}
-
-	/*
-	static SettingsModelBoolean createExportToCSVSettingsModel() {
-		return new SettingsModelBoolean(KEY_EXPORT_TO_CSV, DEFAULT_EXPORT_TO_CSV);
-	}
-	
-	static SettingsModelString createPathToCSVFileSettingsModel() {
-		return new SettingsModelString(KEY_PATH_TO_CSV_FILE, DEFAULT_PATH_TO_CSV_FILE);
-	}
-	*/
     
 	
 	/**
@@ -150,8 +134,8 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	        }
 	        teradataTableSpec = resultSpec;
 	        
-	        StringBuilder sbColunas = new StringBuilder();
-        	String separador = "";
+	        StringBuilder sbColumns = new StringBuilder();
+        	String separator = "";
 	        
 	        ListIterator<String> it = Arrays.asList(resultSpec.getColumnNames()).listIterator();
 			while (it.hasNext()) {
@@ -159,12 +143,10 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 				String item = it.next(); 
 				
 				if (index > 0) {
-					separador = ",";
+					separator = ",";
 				}
-				sbColunas.append(separador + item);
+				sbColumns.append(separator + item);
 			}
-			
-	        //LOGGER.info("Colunas: " + sbColunas);
 	        
 	        if (m_allColumnsAreStrings.getBooleanValue()) {
 	        	LOGGER.info("Config \"set All Columns Are Strings\" to true");
@@ -190,36 +172,20 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	
     @Override
     protected PortObject[] execute(final PortObject[] inData, ExecutionContext exec) throws CanceledExecutionException, Exception {	
-        
     	// Create a container for the datatypes identified in the configure method
 		BufferedDataContainer container = exec.createDataContainer(teradataTableSpec);
 		int rowsSelected = 0;
 		
         try {
-        	// Loads the Teradata JDBC Driver
-			//Class.forName("com.teradata.jdbc.TeraDriver");
-        	
-        	/*
-        	File file = new File("C:\\Users\\TC016123\\Documents\\Drivers\\terajdbc4.jar"); 
-        	URL url = file.toURI().toURL();  
-        	URL[] urls = {url};
-        	
-        	//URLClassLoader child = new URLClassLoader (urls , this.getClass().getClassLoader().getClass().getClassLoader());
-        	URLClassLoader child = new URLClassLoader (urls , FastExportNodeModel.class.getClassLoader());
-        	//ClassLoader loader = bundle.adapt(BundleWiring.class).getClassLoader();
-        	
-        	LOGGER.info("this class name: " + this.getClass().getName());
-        	Class.forName("com.teradata.jdbc.TeraDriver", true, child);
-        	*/
-        	
-
 			String sql = FlowVariableResolver.parse(m_selectStatementSettings.getStringValue(), this);
-			//String sql = m_selectStatementSettings.getStringValue();
+
 			String select = sql;
 
 			// Ensure that TYPE=FASTEXPORT is set
-			String jdbc = removeAtributoJDBC(connSettings.getJDBCUrl(), "TYPE=FASTEXPORT");
-			// 
+			//String jdbc = removeJDBCAttr(connSettings.getJDBCUrl(), "TYPE=FASTEXPORT");
+			// Nope, maybe the user should specify type=fastload, It shouldn't be enforced
+			String jdbc = connSettings.getJDBCUrl(); 
+			
 			Connection con = DriverManager.getConnection(jdbc + ",TYPE=FASTEXPORT", connSettings.getUserName(), connSettings.getPassword());
 			con.clearWarnings();
 
@@ -235,22 +201,20 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 
 			LOGGER.info("Query:\n" + select);
 			
-			// Show warnings
+			// Show any warnings
 			printSQLWarnings(con);
 			
-			// Reads the ResultSet
+			// Read the ResultSet
 			ResultSet rs = pstmt.executeQuery();
-			//rs.setFetchSize(m_bulkSizeSettings.getIntValue());
             ResultSetMetaData rsmd = rs.getMetaData();
 
-            // Let's create some datetime formats
+            // Some date formats for later use
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             SimpleDateFormat timeFormat = new SimpleDateFormat("hh:mm:ss");
             SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
             
 			
 			for (int i = 1; rs.next(); i++, rowsSelected++) {
-				
 				List<DataCell> cells = new ArrayList<>();
 				
                 for (int j = 1; j <= rsmd.getColumnCount(); j++) {
@@ -296,7 +260,6 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
                     			break;
                     		case "VARCHAR":
                     		case "CHAR":
-                    			//cells.add(new StringCell((String) rs.getObject(j)));
                     			cells.add(new StringCell(rs.getString(j)));
                     			break;
                     		case "DATE":
@@ -305,8 +268,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
                     			if (m_allColumnsAreStrings.getBooleanValue()) {
                     				cells.add(new StringCell(dateFormat.format(dt)));
                     			} else {
-                        			// It's necessary to add 1900 to the year because 
-                        			// the driver subtracts 1900 from it
+                        			// Add 1900 to the year to "fix" the date
                         			cells.add(new DateAndTimeCell(dt.getYear() + 1900, dt.getMonth(), dt.getDate()));
                     			}
                     			break;
@@ -335,14 +297,14 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
                     	}
                 	}
                 }
-                // Inserts a row to the KNIME table
+                // Insert a row to the KNIME table
                 DataRow row = new DefaultRow(RowKey.createRowKey(rowsSelected), cells);
                 
                 container.addRowToTable(row);
                 
                 exec.setMessage("Row: " + String.valueOf(i));
                 
-                if (i % 1000000 == 0 ) {
+                if (i % 1000000 == 0 ) { // This should be set somewhere else
                 	// Show progress for each 1,000,000 rows
                     LOGGER.info(i + " rows processed...");	
                 }
@@ -467,7 +429,7 @@ public class FastExportNodeModel extends NodeModel implements FlowVariableProvid
 	
 	
 	// Custom functions
-	private static String removeAtributoJDBC(String jdbc, String atrib) {
+	private static String removeJDBCAttr(String jdbc, String atrib) {
 		// Removes the specified attribute from the string
 		String[] tokens = jdbc.split(",");
 		

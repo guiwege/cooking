@@ -111,9 +111,7 @@ public class FastLoadNodeModel extends NodeModel {
 	    	//Class.forName("com.teradata.jdbc.TeraDriver");
 	    	
 			String jdbc = connSettings.getJDBCUrl();
-			//String jdbc = removeJDBCAttribute(connSettings.getJDBCUrl(), "TYPE=FASTLOAD");
-			//jdbc = jdbc + ",TYPE=FASTLOAD";
-			LOGGER.info("String JDBC: " + jdbc);
+			//LOGGER.info("String JDBC: " + jdbc);
 			
 			con = DriverManager.getConnection(jdbc, connSettings.getUserName(), connSettings.getPassword());
 			
@@ -122,14 +120,13 @@ public class FastLoadNodeModel extends NodeModel {
 			String tableName = m_tableNameSettings.getStringValue();
             
 			// Each column is represented by a ?
-            String questionMarks = new String(new char[tableColumnsDataTypes.size()]).replace("\0", "?,");
-    		questionMarks = questionMarks.substring(0, questionMarks.length()-1); // remove a ultima virgula
-    		System.out.println(questionMarks);
+            String questionMarksFiller = new String(new char[tableColumnsDataTypes.size()]).replace("\0", "?,");
+    		questionMarksFiller = questionMarksFiller.substring(0, questionMarksFiller.length()-1); // Remove last comma
+    		System.out.println(questionMarksFiller);
             
-            String insertStatement = "INSERT INTO " + tableName + " VALUES(" + questionMarks + ")";
+            String insertStatement = "INSERT INTO " + tableName + " VALUES(" + questionMarksFiller + ")";
             
             pstmt = con.prepareStatement(insertStatement);
-            //pstmt.setTimestamp(1, getCurrentTimeStamp());
             
             // Show warnings, if any
             printSQLWarnings(con);
@@ -143,7 +140,7 @@ public class FastLoadNodeModel extends NodeModel {
     			DataRow currentRow = rowIterator.next();
     			int numberOfCells = currentRow.getNumCells();
     			
-    			// For each column (question mark) in the statement, fill the right value
+    			// For each column (question mark) in the statement, fill in the right value
     			for (int index = 0; index < numberOfCells; index++) { // Starts at 0
 
     				// But the SQL index starts at 1 
@@ -151,15 +148,12 @@ public class FastLoadNodeModel extends NodeModel {
     				
     				DataCell cell = currentRow.getCell(index);
     				String type = tableColumnsDataTypes.get(index);
-    				//int typeInt = tableColumnDataTypesInt.get(index);
-    				//LOGGER.info("CURRENT TYPE: " + typeInt + ", " + type);
     				
     				boolean isCurrentCellNull = cell.getClass() == MissingCell.class;
 
-    				// Set the debug cell value
+    				// Current value for debugging if necessary
     				currentCellValueForDebug = cell.toString();
-    				//LOGGER.info("Preparing to add at: " + String.valueOf(sqlIndex) + " \"" + cell.toString() + "\"");
-    				//LOGGER.info("Bytes lengths: " + getBytes(cell.toString()));
+    				
 					switch(type) {
             		case "SMALLINT":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.SMALLINT);
@@ -213,8 +207,6 @@ public class FastLoadNodeModel extends NodeModel {
                 			StringCell stringCell = (StringCell) cell;
             				pstmt.setString(sqlIndex, stringCell.getStringValue());
             			}
-            			
-            			//pstmt.setString(sqlIndex, "");
             			break;
             		case "CHAR":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.CHAR);
@@ -222,8 +214,6 @@ public class FastLoadNodeModel extends NodeModel {
                 			StringCell charCell = (StringCell) cell;
             				pstmt.setString(sqlIndex, charCell.getStringValue());
             			}
-            			
-            			//pstmt.setString(sqlIndex, "");
             			break;
             		case "DATE":
             			if (isCurrentCellNull) pstmt.setNull(sqlIndex, java.sql.Types.DATE);
@@ -253,11 +243,9 @@ public class FastLoadNodeModel extends NodeModel {
             			}
             			break;
             		case "TIMESTAMP":
-            			//LOGGER.info("TIMESTAMP");
             			if (isCurrentCellNull) {
             				if (isFastLoad) pstmt.setTimestamp(sqlIndex, Timestamp.valueOf("1900-01-01 00:00:00.0"));
             				else pstmt.setNull(sqlIndex, java.sql.Types.TIMESTAMP);
-            				//pstmt.setNull(sqlIndex, java.sql.Types.NULL);
             			}
             			else {
                 			DateAndTimeCell timestampCell = (DateAndTimeCell) cell;
@@ -272,11 +260,9 @@ public class FastLoadNodeModel extends NodeModel {
             			}
             			break;
             		case "TIMESTAMP WITH TIME ZONE":
-            			//LOGGER.info("TIMESTAMP WITH TIME ZONE");
             			if (isCurrentCellNull) {
             				if (isFastLoad) pstmt.setTimestamp(sqlIndex, Timestamp.valueOf("1900-01-01 00:00:00.0"), Calendar.getInstance(TimeZone.getDefault()));
             				else pstmt.setNull(sqlIndex, java.sql.Types.TIMESTAMP);
-            				//pstmt.setNull(sqlIndex, java.sql.Types.NULL);
             			}
             			else {
                 			DateAndTimeCell timestampCell = (DateAndTimeCell) cell;
@@ -289,20 +275,13 @@ public class FastLoadNodeModel extends NodeModel {
                 					0);
                 			LOGGER.info("Timestamp column: " + timestamp.toString());
                 			pstmt.setTimestamp(sqlIndex, timestamp);
-            				//pstmt.setTimestamp(sqlIndex, timestamp, Calendar.getInstance(TimeZone.getTimeZone("GMT-03:00")));
-                			//pstmt.setTimestamp(sqlIndex, timestamp, Calendar.getInstance(TimeZone.getDefault()));
             			}
-            			//Object obj = new TimeZoneStruct ("TIMESTAMP WITH TIME ZONE", new Object [] { Timestamp.valueOf ("2004-04-07 10:34:03.974"), TimeZone.getTimeZone ("GMT-03:00")});
-            			//Object obj = new Object [] { Timestamp.valueOf ("2004-04-07 10:34:03.974"), TimeZone.getTimeZone ("GMT-03:00")};
-            			//pstmt.setObject(sqlIndex,  obj, java.sql.Types.TIMESTAMP);
             			break;
             		default:
             			LOGGER.error("Column " + tableColumnsNames.get(index) + ", at: "+ index + ", with value: " + cell.toString() + " was not inserted.");
     				}
     			} // end for
     			
-    			//LOGGER.info(pstmt);
-    			// Adds a row to the prepared statement
     			pstmt.addBatch();
     			
     			rowCount++;
@@ -350,7 +329,6 @@ public class FastLoadNodeModel extends NodeModel {
     		// Finished iterating through the rows
     		
     		// Executes the batch again with the remaining rows
-			//int bulkSize = m_bulkSizeSettings.getIntValue();
     		int updateCounts[] = pstmt.executeBatch();
             if (updateCounts == null) {
                 LOGGER.warn(
@@ -401,11 +379,10 @@ public class FastLoadNodeModel extends NodeModel {
 		try {
     		LOGGER.info("Closing Connection.");
 			con.close();
-    		//printSQLWarnings(con);
 		} catch (SQLException e) {
-			//printStackTraceToLog(e);
 			e.printStackTrace();
 		}
+		
 		// Return an empty BufferedTable
 		return new BufferedDataTable[] {};
 	}
@@ -442,9 +419,6 @@ public class FastLoadNodeModel extends NodeModel {
         try {
 	    	// Removes TYPE=FASTLOAD if it is present
 			String jdbc = removeJDBCAttribute(connSettings.getJDBCUrl(), "TYPE=FASTLOAD");
-			
-			// This connection is only used for getting the data types
-			// No need to call Teradata's drivers here
 			Connection con = DriverManager.getConnection(jdbc, connSettings.getUserName(), connSettings.getPassword());
 			
 			String tableName = m_tableNameSettings.getStringValue();
@@ -456,7 +430,6 @@ public class FastLoadNodeModel extends NodeModel {
 			ResultSetMetaData rsmd = rs.getMetaData();
 			
 	        for (int j = 1; j <= rsmd.getColumnCount(); j++) {
-	        	//
 	        	tableColumnsDataTypes.add(rsmd.getColumnTypeName(j).toUpperCase());
 	        	tableColumnsNames.add(rsmd.getColumnName(j).toUpperCase());
 	        	tableColumnDataTypesInt.add(rsmd.getColumnType(j));

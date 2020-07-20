@@ -18,7 +18,7 @@ public class FastLoadNodeDialog extends DefaultNodeSettingsPane {
 		SettingsModelString stringSettings = FastLoadNodeModel.createTableNameSettingsModel();
 		
         addDialogComponent(new DialogComponentNumber(integerSettings, "Bulk size:", 1000000));
-		addDialogComponent(new DialogComponentString(stringSettings, "Table name:", true, 24));		
+		addDialogComponent(new DialogComponentString(stringSettings, "Target table name:", true, 24));		
     }
 }
 

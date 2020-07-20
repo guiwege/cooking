@@ -12,7 +12,7 @@
         
         <option name="Convert all columns to String">By converting the columns here, one can avoid getting scientific notation when transforming data later in KNIME.</option>
         <option name="Bulk Size">Sets the bulk size for FastExport</option>
-        <option name="Select Statement">The statement used for extracting data. This is exactly what is going to be executed, so LOCKS are possible here.</option>
+        <option name="Select Statement">The statement used for extracting data. This is exactly what is going to be executed, so LOCKING FOR ACCESS is possible here.</option>
         <!-- possibly more options that can also be grouped by tabs -->
         <!--
         <tab name="Standard Options">
